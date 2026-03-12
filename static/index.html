@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cluster Viewer</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Columbia Cluster Viewer</p>
+          <h1>Simple cluster health and queue visibility.</h1>
+          <p class="lede">
+            A lightweight dashboard meant to run directly on the cluster login node and expose the signals
+            people actually need when jobs are backing up.
+          </p>
+        </div>
+        <div class="hero-meta">
+          <div>
+            <span class="meta-label">Host</span>
+            <strong id="host-name">Loading...</strong>
+          </div>
+          <div>
+            <span class="meta-label">Updated</span>
+            <strong id="generated-at">Loading...</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="metric-grid" class="metric-grid"></section>
+
+      <section class="panel-row">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Queue by Status</h2>
+          </div>
+          <div id="queue-status" class="pill-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Top Active Users</h2>
+          </div>
+          <div id="top-users" class="pill-grid"></div>
+        </article>
+      </section>
+
+      <section class="panel-row panel-row-wide">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>My Jobs</h2>
+            <span id="current-user" class="panel-note"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Job</th>
+                  <th>State</th>
+                  <th>Partition</th>
+                  <th>Elapsed</th>
+                  <th>Nodes</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="my-jobs-table"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Node States</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th>State</th>
+                  <th>CPU</th>
+                  <th>Memory</th>
+                  <th>Features</th>
+                </tr>
+              </thead>
+              <tbody id="nodes-table"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Scheduler Diagnostics</h2>
+          <span class="panel-note">Useful when data is missing</span>
+        </div>
+        <pre id="diagnostics" class="diagnostics"></pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
