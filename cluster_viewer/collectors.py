@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import getpass
 import json
 import math
 import os
@@ -122,10 +121,8 @@ def collect_system_metrics() -> dict[str, Any]:
 
 
 def collect_slurm_metrics() -> dict[str, Any]:
-    user = getpass.getuser()
     sinfo = _run_command(["sinfo", "--Node", "--Format=%n|%t|%C|%m|%f"])
     squeue = _run_command(["squeue", "--noheader", "--Format=%i|%T|%u|%P|%M|%D|%R"])
-    my_jobs = _run_command(["squeue", "--noheader", "--user", user, "--Format=%i|%T|%P|%M|%D|%R"])
 
     nodes: list[dict[str, str]] = []
     node_states: dict[str, int] = {}
@@ -175,28 +172,12 @@ def collect_slurm_metrics() -> dict[str, Any]:
                 }
             )
 
-    my_job_rows: list[dict[str, str]] = []
-    if my_jobs["ok"] and my_jobs["stdout"]:
-        for line in my_jobs["stdout"].splitlines():
-            job_id, state, partition, elapsed, nodes_count, reason = (line.split("|") + ["", "", "", "", "", ""])[:6]
-            my_job_rows.append(
-                {
-                    "job_id": job_id,
-                    "state": state,
-                    "partition": partition,
-                    "elapsed": elapsed,
-                    "nodes": nodes_count,
-                    "reason": reason,
-                }
-            )
-
     return {
         "available": sinfo["ok"] or squeue["ok"],
         "scheduler": "slurm",
         "commands": {
             "sinfo": sinfo,
             "squeue": squeue,
-            "my_jobs": my_jobs,
         },
         "nodes": nodes,
         "node_states": node_states,
@@ -208,8 +189,6 @@ def collect_slurm_metrics() -> dict[str, Any]:
         "jobs": jobs,
         "queue_status": queue_status,
         "queue_by_user": queue_by_user,
-        "my_jobs": my_job_rows,
-        "current_user": user,
     }
 
 

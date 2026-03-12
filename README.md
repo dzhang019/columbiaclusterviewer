@@ -5,7 +5,7 @@ Simple cluster monitoring dashboard intended to run directly on an HPC login nod
 ## What it shows
 
 - Host health: uptime, load average, memory pressure, root disk usage
-- Slurm queue summary: job counts by state, active users, your current jobs
+- Slurm queue summary: job counts by state, active users, and a global jobs table filterable by username
 - Node summary from `sinfo`: state, CPU allocation, memory, features
 - Raw scheduler command diagnostics to make debugging easy
 
@@ -58,8 +58,6 @@ The scheduler collector currently assumes Slurm and reads:
 
 - `sinfo --Node --Format=%n|%t|%C|%m|%f`
 - `squeue --noheader --Format=%i|%T|%u|%P|%M|%D|%R`
-- `squeue --noheader --user $USER --Format=%i|%T|%P|%M|%D|%R`
-
 If those commands are unavailable, the dashboard still loads and shows scheduler diagnostics so you can adapt the collector for your environment.
 
 ## Next steps worth adding

@@ -49,8 +49,12 @@
       <section class="panel-row panel-row-wide">
         <article class="panel">
           <div class="panel-header">
-            <h2>My Jobs</h2>
-            <span id="current-user" class="panel-note"></span>
+            <h2>Jobs</h2>
+            <span id="job-count" class="panel-note">Loading...</span>
+          </div>
+          <div class="filter-row">
+            <label class="filter-label" for="user-filter">Filter by user</label>
+            <input id="user-filter" class="filter-input" type="text" placeholder="e.g. abc1234" />
           </div>
           <div class="table-wrap">
             <table>
@@ -58,13 +62,14 @@
                 <tr>
                   <th>Job</th>
                   <th>State</th>
+                  <th>User</th>
                   <th>Partition</th>
                   <th>Elapsed</th>
                   <th>Nodes</th>
                   <th>Reason</th>
                 </tr>
               </thead>
-              <tbody id="my-jobs-table"></tbody>
+              <tbody id="jobs-table"></tbody>
             </table>
           </div>
         </article>

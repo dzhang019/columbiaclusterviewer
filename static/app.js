@@ -1,9 +1,13 @@
 const metricGrid = document.getElementById("metric-grid");
 const queueStatus = document.getElementById("queue-status");
 const topUsers = document.getElementById("top-users");
-const myJobsTable = document.getElementById("my-jobs-table");
+const jobsTable = document.getElementById("jobs-table");
 const nodesTable = document.getElementById("nodes-table");
 const diagnostics = document.getElementById("diagnostics");
+const userFilter = document.getElementById("user-filter");
+const jobCount = document.getElementById("job-count");
+
+let latestDashboard = null;
 
 function renderMetrics(metrics) {
   metricGrid.innerHTML = metrics
@@ -56,14 +60,36 @@ function renderDiagnostics(scheduler) {
   diagnostics.textContent = JSON.stringify(scheduler.commands, null, 2);
 }
 
+function applyJobFilter() {
+  if (!latestDashboard) {
+    return;
+  }
+
+  const filterValue = userFilter.value.trim().toLowerCase();
+  const jobs = latestDashboard.scheduler.jobs.filter((job) => {
+    if (!filterValue) {
+      return true;
+    }
+    return job.user.toLowerCase().includes(filterValue);
+  });
+
+  jobCount.textContent = `${jobs.length} of ${latestDashboard.scheduler.jobs.length} jobs shown`;
+  renderRows(
+    jobsTable,
+    jobs,
+    ["job_id", "state", "user", "partition", "elapsed", "nodes", "reason"],
+    filterValue ? "No jobs match that user filter." : "No scheduler jobs found.",
+  );
+}
+
 async function refreshDashboard() {
   try {
     const response = await fetch("/api/dashboard", { cache: "no-store" });
     const data = await response.json();
+    latestDashboard = data;
 
     document.getElementById("host-name").textContent = data.system.hostname;
     document.getElementById("generated-at").textContent = new Date(data.generated_at).toLocaleString();
-    document.getElementById("current-user").textContent = data.scheduler.current_user || "";
 
     renderMetrics(data.metrics);
 
@@ -76,12 +102,7 @@ async function refreshDashboard() {
     );
 
     renderPills(topUsers, data.top_users, "No active jobs.", "user", "jobs");
-    renderRows(
-      myJobsTable,
-      data.scheduler.my_jobs,
-      ["job_id", "state", "partition", "elapsed", "nodes", "reason"],
-      "No jobs for the current user.",
-    );
+    applyJobFilter();
     renderRows(
       nodesTable,
       data.scheduler.nodes.map((node) => ({
@@ -99,6 +120,8 @@ async function refreshDashboard() {
     diagnostics.textContent = `Failed to load dashboard data: ${error}`;
   }
 }
+
+userFilter.addEventListener("input", applyJobFilter);
 
 refreshDashboard();
 window.setInterval(refreshDashboard, 30000);
