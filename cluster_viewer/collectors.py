@@ -212,9 +212,26 @@ def _format_duration(seconds: int) -> str:
     return f"{minutes}m"
 
 
-def build_dashboard_payload() -> dict[str, Any]:
+def collect_live_snapshot() -> dict[str, Any]:
     system = collect_system_metrics()
     scheduler = collect_slurm_metrics()
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "system": system,
+        "scheduler": scheduler,
+    }
+
+
+def build_dashboard_payload() -> dict[str, Any]:
+    return build_dashboard_payload_from_snapshot(collect_live_snapshot())
+
+
+def build_dashboard_payload_from_snapshot(
+    snapshot: dict[str, Any],
+    history: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    system = snapshot["system"]
+    scheduler = snapshot["scheduler"]
 
     metrics = [
         Metric(
@@ -274,11 +291,12 @@ def build_dashboard_payload() -> dict[str, Any]:
     )[:8]
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": snapshot["generated_at"],
         "system": system,
         "scheduler": scheduler,
         "metrics": [metric.as_dict() for metric in metrics],
         "top_users": [{"user": user, "jobs": jobs} for user, jobs in top_users],
+        "history": history or {},
     }
 
 

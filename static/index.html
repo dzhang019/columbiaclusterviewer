@@ -29,54 +29,105 @@
         </div>
       </section>
 
-      <section id="metric-grid" class="metric-grid"></section>
+      <nav class="tab-bar" id="tab-bar" aria-label="Cluster views">
+        <button class="tab-button is-active" type="button" data-tab="overview">Overview</button>
+        <button class="tab-button" type="button" data-tab="nodes">Nodes</button>
+        <button class="tab-button" type="button" data-tab="diagnostics">Diagnostics</button>
+      </nav>
 
-      <section class="panel-row">
-        <article class="panel">
-          <div class="panel-header">
-            <h2>Queue by Status</h2>
-          </div>
-          <div id="queue-status" class="pill-grid"></div>
-        </article>
-        <article class="panel">
-          <div class="panel-header">
-            <h2>Top Active Users</h2>
-          </div>
-          <div id="top-users" class="pill-grid"></div>
-        </article>
+      <section class="tab-panel is-active" id="tab-overview" data-tabpanel="overview">
+        <section id="metric-grid" class="metric-grid"></section>
+
+        <section class="panel-row">
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Queue by Status</h2>
+            </div>
+            <div id="queue-status" class="pill-grid"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Cluster Status</h2>
+            </div>
+            <div id="cluster-status" class="pill-grid"></div>
+          </article>
+        </section>
+
+        <section class="panel-row">
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Top Active Users</h2>
+            </div>
+            <div id="top-users" class="pill-grid"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Jobs Snapshot</h2>
+              <span id="job-count" class="panel-note">Loading...</span>
+            </div>
+            <div class="filter-inline">
+              <label class="filter-label" for="overview-user-filter">Filter jobs by user</label>
+              <input id="overview-user-filter" class="filter-input" type="text" placeholder="e.g. abc1234" />
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>State</th>
+                    <th>User</th>
+                    <th>Partition</th>
+                    <th>Elapsed</th>
+                    <th>Nodes</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="jobs-table"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
       </section>
 
-      <section class="panel-row panel-row-wide">
-        <article class="panel">
+      <section class="tab-panel" id="tab-nodes" data-tabpanel="nodes" hidden>
+        <section class="panel">
           <div class="panel-header">
-            <h2>Jobs</h2>
-            <span id="job-count" class="panel-note">Loading...</span>
+            <h2>Node Controls</h2>
+            <span id="node-count" class="panel-note">Loading...</span>
           </div>
-          <div class="filter-row">
-            <label class="filter-label" for="user-filter">Filter by user</label>
-            <input id="user-filter" class="filter-input" type="text" placeholder="e.g. abc1234" />
+          <div class="filter-stack">
+            <div class="filter-grid filter-grid--wide">
+              <div>
+                <label class="filter-label" for="nodes-filter">Filter nodes</label>
+                <input id="nodes-filter" class="filter-input" type="text" placeholder="e.g. gpu or node123" />
+              </div>
+            </div>
+            <div class="range-row" id="node-scope">
+              <button class="range-chip is-active" type="button" data-node-scope="all">All Nodes</button>
+              <button class="range-chip" type="button" data-node-scope="problem">Problem Nodes</button>
+              <button class="range-chip" type="button" data-node-scope="gpu">GPU Nodes</button>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Job</th>
-                  <th>State</th>
-                  <th>User</th>
-                  <th>Partition</th>
-                  <th>Elapsed</th>
-                  <th>Nodes</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="jobs-table"></tbody>
-            </table>
-          </div>
-        </article>
+        </section>
 
-        <article class="panel">
+        <section class="panel-row">
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Node State Summary</h2>
+            </div>
+            <div id="node-status" class="pill-grid"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Operational Notes</h2>
+            </div>
+            <div id="node-notes" class="note-list"></div>
+          </article>
+        </section>
+
+        <section class="panel">
           <div class="panel-header">
-            <h2>Node States</h2>
+            <h2>Node Inventory</h2>
           </div>
           <div class="table-wrap">
             <table>
@@ -92,15 +143,104 @@
               <tbody id="nodes-table"></tbody>
             </table>
           </div>
-        </article>
+        </section>
       </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <h2>Scheduler Diagnostics</h2>
-          <span class="panel-note">Useful when data is missing</span>
-        </div>
-        <pre id="diagnostics" class="diagnostics"></pre>
+      <section class="tab-panel" id="tab-diagnostics" data-tabpanel="diagnostics" hidden>
+        <section class="panel controls-panel">
+          <div class="panel-header">
+            <h2>Historical Filters</h2>
+            <span id="history-coverage" class="panel-note">No historical samples yet</span>
+          </div>
+          <div class="filter-stack">
+            <div class="range-row" id="range-picker">
+              <button class="range-chip" data-range="live" type="button">Live</button>
+              <button class="range-chip" data-range="5m" type="button">Last 5m</button>
+              <button class="range-chip is-active" data-range="1h" type="button">Last 1h</button>
+              <button class="range-chip" data-range="1d" type="button">Last 1d</button>
+              <button class="range-chip" data-range="1mo" type="button">Last 1mo</button>
+            </div>
+            <div class="filter-grid">
+              <div>
+                <label class="filter-label" for="diagnostics-user-filter">History user filter</label>
+                <input id="diagnostics-user-filter" class="filter-input" type="text" placeholder="e.g. abc1234" />
+              </div>
+              <div>
+                <label class="filter-label" for="diagnostics-node-filter">History node filter</label>
+                <input id="diagnostics-node-filter" class="filter-input" type="text" placeholder="e.g. gpu or node123" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-row">
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Cluster History</h2>
+              <span id="history-range-label" class="panel-note">Last 1h</span>
+            </div>
+            <div class="chart-grid">
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Load Average</strong>
+                  <span class="panel-note">1 minute load</span>
+                </div>
+                <div id="chart-load" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Memory Pressure</strong>
+                  <span class="panel-note">% used</span>
+                </div>
+                <div id="chart-memory" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>CPU Allocation</strong>
+                  <span class="panel-note">allocated vs idle</span>
+                </div>
+                <div id="chart-cpu" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Queue Depth</strong>
+                  <span class="panel-note">running vs pending</span>
+                </div>
+                <div id="chart-queue" class="chart"></div>
+              </div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-header">
+              <h2>Filtered History</h2>
+              <span id="filter-summary" class="panel-note">No user/node filter applied</span>
+            </div>
+            <div class="chart-grid chart-grid--stacked">
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>User Jobs</strong>
+                  <span class="panel-note">matching usernames</span>
+                </div>
+                <div id="chart-user" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Node Allocation</strong>
+                  <span class="panel-note">matching nodes</span>
+                </div>
+                <div id="chart-node" class="chart"></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Scheduler Diagnostics</h2>
+            <span class="panel-note">Useful when data is missing</span>
+          </div>
+          <pre id="diagnostics" class="diagnostics"></pre>
+        </section>
       </section>
     </main>
 

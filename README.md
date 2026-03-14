@@ -7,11 +7,12 @@ Simple cluster monitoring dashboard intended to run directly on an HPC login nod
 - Host health: uptime, load average, memory pressure, root disk usage
 - Slurm queue summary: job counts by state, active users, and a global jobs table filterable by username
 - Node summary from `sinfo`: state, CPU allocation, memory, features
+- Historical cluster, user, and node trends for live, 5 minute, 1 hour, 1 day, and 1 month windows
 - Raw scheduler command diagnostics to make debugging easy
 
 ## Why this shape
 
-This app is intentionally zero-dependency. It uses Python's standard library only, which makes it easier to deploy on a cluster where package installation is inconvenient or restricted.
+This app is intentionally zero-dependency. It uses Python's standard library only, stores history in SQLite, and is easy to deploy on a cluster where package installation is inconvenient or restricted.
 
 ## Run locally
 
@@ -25,6 +26,12 @@ You can also choose a bind address and port:
 
 ```bash
 python3 app.py --host 127.0.0.1 --port 8080
+```
+
+Or include the history database path and sampling cadence explicitly:
+
+```bash
+python3 app.py --host 127.0.0.1 --port 8000 --db-path ./cluster_viewer.sqlite3 --sample-interval 60
 ```
 
 ## Deployment on the cluster
@@ -45,7 +52,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/path/to/columbiaclusterviewer
-ExecStart=/usr/bin/python3 /path/to/columbiaclusterviewer/app.py --host 127.0.0.1 --port 8000
+ExecStart=/usr/bin/python3 /path/to/columbiaclusterviewer/app.py --host 127.0.0.1 --port 8000 --db-path /path/to/columbiaclusterviewer/cluster_viewer.sqlite3 --sample-interval 60
 Restart=always
 
 [Install]
@@ -58,11 +65,18 @@ The scheduler collector currently assumes Slurm and reads:
 
 - `sinfo --Node --Format=%n|%t|%C|%m|%f`
 - `squeue --noheader --Format=%i|%T|%u|%P|%M|%D|%R`
+
 If those commands are unavailable, the dashboard still loads and shows scheduler diagnostics so you can adapt the collector for your environment.
+
+## Historical data
+
+- Samples are written to SQLite every 60 seconds by default.
+- Data older than 45 days is pruned automatically.
+- The UI supports live, 5 minute, 1 hour, 1 day, and 1 month windows.
+- User filters apply to jobs plus user history, and node filters apply to current nodes plus node history.
 
 ## Next steps worth adding
 
 - GPU metrics via `nvidia-smi` or scheduler GRES summaries
-- Historical sampling written to a small SQLite database
 - Alerts for login node overload or abnormal queue growth
 - Authentication in front of the dashboard
