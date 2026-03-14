@@ -57,6 +57,15 @@ def _node_state_summary(node_states: dict[str, int]) -> dict[str, int]:
     return summary
 
 
+def _safe_int(value: str | None) -> int:
+    if not value:
+        return 0
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+
 class HistoryStore:
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = str(db_path)
@@ -204,10 +213,10 @@ class HistoryStore:
                             sample_id,
                             node.get("name", ""),
                             node.get("state", ""),
-                            int(node.get("cpu_allocated", "0")),
-                            int(node.get("cpu_idle", "0")),
-                            int(node.get("cpu_total", "0")),
-                            int(node.get("memory_mb", "0")),
+                            _safe_int(node.get("cpu_allocated", "0")),
+                            _safe_int(node.get("cpu_idle", "0")),
+                            _safe_int(node.get("cpu_total", "0")),
+                            _safe_int(node.get("memory_mb", "0")),
                         )
                         for node in scheduler.get("nodes", [])
                         if node.get("name")

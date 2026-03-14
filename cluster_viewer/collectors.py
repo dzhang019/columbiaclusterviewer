@@ -123,7 +123,7 @@ def collect_system_metrics() -> dict[str, Any]:
 
 
 def collect_slurm_metrics() -> dict[str, Any]:
-    sinfo = _run_command(["sinfo", "--Node", "-o", "%N|%t|%C|%m|%f"])
+    sinfo = _run_command(["sinfo", "--noheader", "--Node", "-o", "%N|%t|%C|%m|%f"])
     squeue = _run_command(["squeue", "--noheader", "-o", "%i|%T|%u|%P|%M|%D|%R"])
 
     nodes: list[dict[str, str]] = []
@@ -135,6 +135,8 @@ def collect_slurm_metrics() -> dict[str, Any]:
     if sinfo["ok"] and sinfo["stdout"]:
         for line in sinfo["stdout"].splitlines():
             node_name, state, cpu_field, memory_mb, features = (line.split("|") + ["", "", "", "", ""])[:5]
+            if node_name.upper() == "NODELIST" or memory_mb.upper() == "MEMORY":
+                continue
             alloc, idle, other, total = [_safe_int(part) for part in cpu_field.split("/")[:4]]
             total_alloc += alloc
             total_idle += idle
