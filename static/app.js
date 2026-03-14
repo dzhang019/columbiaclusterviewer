@@ -9,6 +9,8 @@ const overviewUserFilter = document.getElementById("overview-user-filter");
 const nodesFilter = document.getElementById("nodes-filter");
 const diagnosticsUserFilter = document.getElementById("diagnostics-user-filter");
 const diagnosticsNodeFilter = document.getElementById("diagnostics-node-filter");
+const diagnosticsUserFilterState = document.getElementById("diagnostics-user-filter-state");
+const diagnosticsNodeFilterState = document.getElementById("diagnostics-node-filter-state");
 const jobCount = document.getElementById("job-count");
 const nodeCount = document.getElementById("node-count");
 const nodeStatus = document.getElementById("node-status");
@@ -27,6 +29,11 @@ let activeNodeScope = "all";
 let filterTimer = null;
 
 const TAB_IDS = ["overview", "nodes", "diagnostics"];
+const TAB_HASHES = {
+  overview: "#view-overview",
+  nodes: "#view-nodes",
+  diagnostics: "#view-diagnostics",
+};
 const JOB_LIMIT = 25;
 
 function escapeHtml(value) {
@@ -49,7 +56,7 @@ function setTab(tabId, updateHash = true) {
     panel.hidden = !isActive;
   }
   if (updateHash) {
-    window.location.hash = activeTab;
+    window.history.replaceState(null, "", TAB_HASHES[activeTab]);
   }
 }
 
@@ -167,6 +174,22 @@ function renderChart(targetId, seriesList, emptyLabel) {
     )
     .join("");
 
+  const summaries = activeSeries
+    .map((series) => {
+      const current = series.values[series.values.length - 1] ?? 0;
+      const low = Math.min(...series.values);
+      const high = Math.max(...series.values);
+      return `
+        <div class="chart-stat">
+          <strong>${escapeHtml(series.label)}</strong>
+          <span>Current ${escapeHtml(formatSeriesValue(current, series.unit))}</span>
+          <span>Low ${escapeHtml(formatSeriesValue(low, series.unit))}</span>
+          <span>High ${escapeHtml(formatSeriesValue(high, series.unit))}</span>
+        </div>
+      `;
+    })
+    .join("");
+
   target.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" class="chart-svg" aria-hidden="true">
       <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"></line>
@@ -174,10 +197,17 @@ function renderChart(targetId, seriesList, emptyLabel) {
       ${polylines}
     </svg>
     <div class="chart-footer">
-      <span class="panel-note">max ${escapeHtml(maxValue.toFixed(1))}</span>
+      <div class="chart-stats">${summaries}</div>
       <div class="legend">${legend}</div>
     </div>
   `;
+}
+
+function formatSeriesValue(value, unit = "") {
+  if (unit === "%") {
+    return `${value.toFixed(1)}%`;
+  }
+  return value.toFixed(1);
 }
 
 function getStatePriority(state) {
@@ -248,44 +278,44 @@ function renderHistory(history) {
 
   renderChart(
     "chart-load",
-    [{ label: "Load", color: "#0c6a58", values: cluster.map((point) => point.load1 || 0) }],
+    [{ label: "Load", color: "#0c6a58", values: cluster.map((point) => point.load1 || 0), unit: "" }],
     "Waiting for load samples.",
   );
   renderChart(
     "chart-memory",
-    [{ label: "Memory %", color: "#9d5c12", values: cluster.map((point) => point.memory_percent || 0) }],
+    [{ label: "Memory", color: "#9d5c12", values: cluster.map((point) => point.memory_percent || 0), unit: "%" }],
     "Waiting for memory samples.",
   );
   renderChart(
     "chart-cpu",
     [
-      { label: "Allocated", color: "#0c6a58", values: cluster.map((point) => point.cpu_allocated || 0) },
-      { label: "Idle", color: "#758579", values: cluster.map((point) => point.cpu_idle || 0) },
+      { label: "Allocated", color: "#0c6a58", values: cluster.map((point) => point.cpu_allocated || 0), unit: "" },
+      { label: "Idle", color: "#758579", values: cluster.map((point) => point.cpu_idle || 0), unit: "" },
     ],
     "Waiting for CPU samples.",
   );
   renderChart(
     "chart-queue",
     [
-      { label: "Running", color: "#0c6a58", values: cluster.map((point) => point.running_jobs || 0) },
-      { label: "Pending", color: "#d18a2d", values: cluster.map((point) => point.pending_jobs || 0) },
+      { label: "Running", color: "#0c6a58", values: cluster.map((point) => point.running_jobs || 0), unit: "" },
+      { label: "Pending", color: "#d18a2d", values: cluster.map((point) => point.pending_jobs || 0), unit: "" },
     ],
     "Waiting for queue samples.",
   );
   renderChart(
     "chart-user",
     [
-      { label: "Running", color: "#0c6a58", values: userSeries.map((point) => point.running_jobs || 0) },
-      { label: "Pending", color: "#d18a2d", values: userSeries.map((point) => point.pending_jobs || 0) },
-      { label: "Total", color: "#294b43", values: userSeries.map((point) => point.total_jobs || 0) },
+      { label: "Running", color: "#0c6a58", values: userSeries.map((point) => point.running_jobs || 0), unit: "" },
+      { label: "Pending", color: "#d18a2d", values: userSeries.map((point) => point.pending_jobs || 0), unit: "" },
+      { label: "Total", color: "#294b43", values: userSeries.map((point) => point.total_jobs || 0), unit: "" },
     ],
     "Add a user filter to see matching user history.",
   );
   renderChart(
     "chart-node",
     [
-      { label: "Allocated CPU", color: "#0c6a58", values: nodeSeries.map((point) => point.cpu_allocated || 0) },
-      { label: "Idle CPU", color: "#758579", values: nodeSeries.map((point) => point.cpu_idle || 0) },
+      { label: "Allocated CPU", color: "#0c6a58", values: nodeSeries.map((point) => point.cpu_allocated || 0), unit: "" },
+      { label: "Idle CPU", color: "#758579", values: nodeSeries.map((point) => point.cpu_idle || 0), unit: "" },
     ],
     "Add a node filter to see matching node history.",
   );
@@ -299,7 +329,47 @@ function renderHistory(history) {
   if (history.filters && (history.filters.user || history.filters.node)) {
     filterSummary.textContent = `user: ${history.filters.user || "all"} | node: ${history.filters.node || "all"}`;
   } else {
-    filterSummary.textContent = "No user/node filter applied";
+    filterSummary.textContent = "Subset matching the active history filters";
+  }
+
+  renderDiagnosticsFilterState(history);
+}
+
+function setFilterVisualState(input, stateEl, tone, text) {
+  input.classList.remove("filter-input--active", "filter-input--invalid");
+  stateEl.classList.remove("filter-state--active", "filter-state--invalid");
+
+  if (tone === "active") {
+    input.classList.add("filter-input--active");
+    stateEl.classList.add("filter-state--active");
+  } else if (tone === "invalid") {
+    input.classList.add("filter-input--invalid");
+    stateEl.classList.add("filter-state--invalid");
+  }
+
+  stateEl.textContent = text;
+}
+
+function renderDiagnosticsFilterState(history) {
+  const userValue = diagnosticsUserFilter.value.trim();
+  const nodeValue = diagnosticsNodeFilter.value.trim();
+  const userHasMatches = (history.user || []).some((point) => (point.total_jobs || 0) > 0);
+  const nodeHasMatches = (history.node || []).some((point) => (point.matched_nodes || 0) > 0 || (point.cpu_total || 0) > 0);
+
+  if (!userValue) {
+    setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "neutral", "All users");
+  } else if (userHasMatches) {
+    setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "active", "Active match");
+  } else {
+    setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "invalid", "No matches");
+  }
+
+  if (!nodeValue) {
+    setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "neutral", "All nodes");
+  } else if (nodeHasMatches) {
+    setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "active", "Active match");
+  } else {
+    setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "invalid", "No matches");
   }
 }
 
@@ -506,11 +576,12 @@ tabBar.addEventListener("click", (event) => {
 });
 
 window.addEventListener("hashchange", () => {
-  setTab(window.location.hash.replace("#", ""), false);
+  const tabId = Object.entries(TAB_HASHES).find(([, hash]) => hash === window.location.hash)?.[0] || "overview";
+  setTab(tabId, false);
 });
 
 setRange(activeRange);
 setNodeScope(activeNodeScope);
-setTab(window.location.hash.replace("#", "") || "overview", false);
+setTab(Object.entries(TAB_HASHES).find(([, hash]) => hash === window.location.hash)?.[0] || "overview", false);
 refreshDashboard();
 window.setInterval(refreshDashboard, 30000);

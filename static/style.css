@@ -219,6 +219,27 @@ h1 {
   font-size: 0.9rem;
 }
 
+.filter-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.filter-state {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.filter-state--active {
+  color: var(--accent);
+}
+
+.filter-state--invalid {
+  color: #a03c2d;
+}
+
 .filter-input {
   width: 100%;
   padding: 10px 12px;
@@ -232,6 +253,16 @@ h1 {
 .filter-input:focus {
   outline: 2px solid var(--accent-soft);
   border-color: var(--accent);
+}
+
+.filter-input--active {
+  border-color: rgba(12, 106, 88, 0.45);
+  background: rgba(12, 106, 88, 0.06);
+}
+
+.filter-input--invalid {
+  border-color: rgba(160, 60, 45, 0.55);
+  background: rgba(160, 60, 45, 0.06);
 }
 
 .pill-grid {
@@ -306,9 +337,32 @@ h1 {
 .chart-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   margin-top: 8px;
+}
+
+.chart-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-stat {
+  display: grid;
+  gap: 2px;
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 252, 245, 0.85);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.chart-stat strong {
+  color: var(--ink);
+  font-size: 0.86rem;
 }
 
 .legend {

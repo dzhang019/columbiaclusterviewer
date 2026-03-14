@@ -162,11 +162,17 @@
             </div>
             <div class="filter-grid">
               <div>
-                <label class="filter-label" for="diagnostics-user-filter">History user filter</label>
+                <div class="filter-label-row">
+                  <label class="filter-label" for="diagnostics-user-filter">History user filter</label>
+                  <span id="diagnostics-user-filter-state" class="filter-state">All users</span>
+                </div>
                 <input id="diagnostics-user-filter" class="filter-input" type="text" placeholder="e.g. abc1234" />
               </div>
               <div>
-                <label class="filter-label" for="diagnostics-node-filter">History node filter</label>
+                <div class="filter-label-row">
+                  <label class="filter-label" for="diagnostics-node-filter">History node filter</label>
+                  <span id="diagnostics-node-filter-state" class="filter-state">All nodes</span>
+                </div>
                 <input id="diagnostics-node-filter" class="filter-input" type="text" placeholder="e.g. gpu or node123" />
               </div>
             </div>
@@ -177,7 +183,7 @@
           <article class="panel">
             <div class="panel-header">
               <h2>Cluster History</h2>
-              <span id="history-range-label" class="panel-note">Last 1h</span>
+              <span id="history-range-label" class="panel-note">Last 1h, cluster-wide baseline</span>
             </div>
             <div class="chart-grid">
               <div class="chart-card">
@@ -213,7 +219,7 @@
           <article class="panel">
             <div class="panel-header">
               <h2>Filtered History</h2>
-              <span id="filter-summary" class="panel-note">No user/node filter applied</span>
+              <span id="filter-summary" class="panel-note">Subset matching the active history filters</span>
             </div>
             <div class="chart-grid chart-grid--stacked">
               <div class="chart-card">
