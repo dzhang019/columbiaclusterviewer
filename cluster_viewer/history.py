@@ -294,6 +294,34 @@ class HistoryStore:
                 coverage = connection.execute(
                     "SELECT MIN(collected_at) AS oldest, MAX(collected_at) AS newest, COUNT(*) AS samples FROM samples"
                 ).fetchone()
+                matched_users = [
+                    row["user_name"]
+                    for row in connection.execute(
+                        """
+                        SELECT DISTINCT u.user_name
+                        FROM user_samples AS u
+                        INNER JOIN samples AS s ON s.id = u.sample_id
+                        WHERE s.collected_at >= ?
+                            AND (? = '' OR LOWER(u.user_name) LIKE ?)
+                        ORDER BY u.user_name ASC
+                        """,
+                        (since, user_filter, user_like),
+                    )
+                ]
+                matched_nodes = [
+                    row["node_name"]
+                    for row in connection.execute(
+                        """
+                        SELECT DISTINCT n.node_name
+                        FROM node_samples AS n
+                        INNER JOIN samples AS s ON s.id = n.sample_id
+                        WHERE s.collected_at >= ?
+                            AND (? = '' OR LOWER(n.node_name) LIKE ?)
+                        ORDER BY n.node_name ASC
+                        """,
+                        (since, node_filter, node_like),
+                    )
+                ]
 
         return {
             "range": normalized_range,
@@ -301,6 +329,10 @@ class HistoryStore:
             "user": _downsample(user_rows, config["max_points"]),
             "node": _downsample(node_rows, config["max_points"]),
             "filters": {"user": user_filter, "node": node_filter},
+            "matches": {
+                "users": matched_users,
+                "nodes": matched_nodes,
+            },
             "coverage": {
                 "oldest": coverage["oldest"] if coverage else None,
                 "newest": coverage["newest"] if coverage else None,

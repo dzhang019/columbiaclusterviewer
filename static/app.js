@@ -163,6 +163,22 @@ function renderChart(targetId, seriesList, emptyLabel) {
     })
     .join("");
 
+  const endLabels = activeSeries
+    .map((series) => {
+      const current = series.values[series.values.length - 1] ?? 0;
+      const lastIndex = Math.max(series.values.length - 1, 1);
+      const x = padding + ((width - padding * 2) * lastIndex) / Math.max(series.values.length - 1, 1);
+      const y = height - padding - (current / maxValue) * (height - padding * 2);
+      const labelX = Math.min(x + 8, width - padding + 2);
+      return `
+        <circle cx="${x}" cy="${y}" r="3.5" fill="${series.color}"></circle>
+        <text x="${labelX}" y="${y - 6}" class="chart-end-label" fill="${series.color}">
+          ${escapeHtml(formatSeriesValue(current, series.unit))}
+        </text>
+      `;
+    })
+    .join("");
+
   const legend = activeSeries
     .map(
       (series) => `
@@ -195,6 +211,7 @@ function renderChart(targetId, seriesList, emptyLabel) {
       <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"></line>
       <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis"></line>
       ${polylines}
+      ${endLabels}
     </svg>
     <div class="chart-footer">
       <div class="chart-stats">${summaries}</div>
@@ -356,34 +373,13 @@ function formatMatchSummary(label, matches) {
   return `${label}: ${matches.length} matches (${preview}${suffix})`;
 }
 
-function getMatchedUsers(filterValue) {
-  const users = new Set();
-  for (const job of latestDashboard.scheduler.jobs || []) {
-    if (!filterValue || job.user.toLowerCase().includes(filterValue.toLowerCase())) {
-      users.add(job.user);
-    }
-  }
-  return [...users].sort((left, right) => left.localeCompare(right));
-}
-
-function getMatchedNodes(filterValue) {
-  const nodes = new Set();
-  for (const node of latestDashboard.scheduler.nodes || []) {
-    const haystack = `${node.name} ${node.features}`.toLowerCase();
-    if (!filterValue || haystack.includes(filterValue.toLowerCase())) {
-      nodes.add(node.name);
-    }
-  }
-  return [...nodes].sort((left, right) => left.localeCompare(right));
-}
-
 function renderDiagnosticsFilterState(history) {
   const userValue = diagnosticsUserFilter.value.trim();
   const nodeValue = diagnosticsNodeFilter.value.trim();
   const userHasMatches = (history.user || []).some((point) => (point.total_jobs || 0) > 0);
   const nodeHasMatches = (history.node || []).some((point) => (point.matched_nodes || 0) > 0 || (point.cpu_total || 0) > 0);
-  const matchedUsers = userValue ? getMatchedUsers(userValue) : [];
-  const matchedNodes = nodeValue ? getMatchedNodes(nodeValue) : [];
+  const matchedUsers = userValue ? history.matches?.users || [] : [];
+  const matchedNodes = nodeValue ? history.matches?.nodes || [] : [];
 
   if (!userValue) {
     setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "neutral", "All users");

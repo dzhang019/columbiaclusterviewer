@@ -344,6 +344,11 @@ h1 {
   stroke-width: 1;
 }
 
+.chart-end-label {
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .chart-footer {
   display: flex;
   justify-content: space-between;
