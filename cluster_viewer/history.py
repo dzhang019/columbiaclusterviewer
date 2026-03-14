@@ -104,6 +104,12 @@ class HistoryStore:
                     nodes_idle INTEGER NOT NULL,
                     nodes_down INTEGER NOT NULL,
                     nodes_drain INTEGER NOT NULL,
+                    gpu_total INTEGER NOT NULL DEFAULT 0,
+                    gpu_allocated INTEGER NOT NULL DEFAULT 0,
+                    gpu_idle INTEGER NOT NULL DEFAULT 0,
+                    host_gpu_visible INTEGER NOT NULL DEFAULT 0,
+                    host_gpu_util REAL NOT NULL DEFAULT 0,
+                    host_gpu_memory_percent REAL NOT NULL DEFAULT 0,
                     scheduler_available INTEGER NOT NULL
                 );
 
@@ -129,6 +135,8 @@ class HistoryStore:
                     cpu_idle INTEGER NOT NULL,
                     cpu_total INTEGER NOT NULL,
                     memory_mb INTEGER NOT NULL,
+                    gpu_total INTEGER NOT NULL DEFAULT 0,
+                    gpu_allocated INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (sample_id, node_name),
                     FOREIGN KEY(sample_id) REFERENCES samples(id) ON DELETE CASCADE
                 );
@@ -136,12 +144,30 @@ class HistoryStore:
                 CREATE INDEX IF NOT EXISTS idx_node_samples_node_name ON node_samples(node_name);
                 """
             )
+            self._ensure_column(connection, "samples", "gpu_total", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "samples", "gpu_allocated", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "samples", "gpu_idle", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "samples", "host_gpu_visible", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "samples", "host_gpu_util", "REAL NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "samples", "host_gpu_memory_percent", "REAL NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "node_samples", "gpu_total", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "node_samples", "gpu_allocated", "INTEGER NOT NULL DEFAULT 0")
+
+    def _ensure_column(self, connection: sqlite3.Connection, table_name: str, column_name: str, definition: str) -> None:
+        existing = {
+            row["name"]
+            for row in connection.execute(f"PRAGMA table_info({table_name})")
+        }
+        if column_name not in existing:
+            connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
 
     def save_snapshot(self, snapshot: dict[str, Any]) -> None:
         system = snapshot["system"]
         scheduler = snapshot["scheduler"]
+        nvidia = snapshot.get("nvidia", {})
         queue_status = scheduler.get("queue_status", {})
         node_summary = _node_state_summary(scheduler.get("node_states", {}))
+        gpu = scheduler.get("gpu", {})
 
         with self._lock:
             with self._connect() as connection:
@@ -150,8 +176,10 @@ class HistoryStore:
                     INSERT INTO samples (
                         collected_at, hostname, load1, load5, load15, memory_percent, disk_percent,
                         cpu_allocated, cpu_idle, cpu_other, total_jobs, running_jobs, pending_jobs,
-                        nodes_total, nodes_allocated, nodes_idle, nodes_down, nodes_drain, scheduler_available
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        nodes_total, nodes_allocated, nodes_idle, nodes_down, nodes_drain,
+                        gpu_total, gpu_allocated, gpu_idle, host_gpu_visible, host_gpu_util,
+                        host_gpu_memory_percent, scheduler_available
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         snapshot["generated_at"],
@@ -172,6 +200,12 @@ class HistoryStore:
                         node_summary["idle"],
                         node_summary["down"],
                         node_summary["drain"],
+                        gpu.get("total", 0),
+                        gpu.get("allocated", 0),
+                        gpu.get("idle", 0),
+                        nvidia.get("visible_gpus", 0),
+                        nvidia.get("average_utilization_gpu", 0.0),
+                        nvidia.get("average_memory_percent", 0.0),
                         1 if scheduler.get("available") else 0,
                     ),
                 )
@@ -205,8 +239,8 @@ class HistoryStore:
                 connection.executemany(
                     """
                     INSERT OR REPLACE INTO node_samples (
-                        sample_id, node_name, state, cpu_allocated, cpu_idle, cpu_total, memory_mb
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        sample_id, node_name, state, cpu_allocated, cpu_idle, cpu_total, memory_mb, gpu_total, gpu_allocated
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     [
                         (
@@ -217,6 +251,8 @@ class HistoryStore:
                             _safe_int(node.get("cpu_idle", "0")),
                             _safe_int(node.get("cpu_total", "0")),
                             _safe_int(node.get("memory_mb", "0")),
+                            _safe_int(node.get("gpu_total", "0")),
+                            _safe_int(node.get("gpu_allocated", "0")),
                         )
                         for node in scheduler.get("nodes", [])
                         if node.get("name")
@@ -242,7 +278,8 @@ class HistoryStore:
                         """
                         SELECT
                             collected_at, load1, memory_percent, cpu_allocated, cpu_idle, cpu_other,
-                            total_jobs, running_jobs, pending_jobs, nodes_allocated, nodes_idle, nodes_down, nodes_drain
+                            total_jobs, running_jobs, pending_jobs, nodes_allocated, nodes_idle, nodes_down, nodes_drain,
+                            gpu_total, gpu_allocated, gpu_idle, host_gpu_visible, host_gpu_util, host_gpu_memory_percent
                         FROM samples
                         WHERE collected_at >= ?
                         ORDER BY collected_at ASC
@@ -279,6 +316,8 @@ class HistoryStore:
                             COALESCE(SUM(n.cpu_allocated), 0) AS cpu_allocated,
                             COALESCE(SUM(n.cpu_idle), 0) AS cpu_idle,
                             COALESCE(SUM(n.cpu_total), 0) AS cpu_total,
+                            COALESCE(SUM(n.gpu_allocated), 0) AS gpu_allocated,
+                            COALESCE(SUM(n.gpu_total), 0) AS gpu_total,
                             COALESCE(COUNT(n.node_name), 0) AS matched_nodes
                         FROM samples AS s
                         LEFT JOIN node_samples AS n

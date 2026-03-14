@@ -8,6 +8,7 @@ Simple cluster monitoring dashboard intended to run directly on an HPC login nod
 - Slurm queue summary: job counts by state, active users, and a global jobs table filterable by username
 - Node summary from `sinfo`: state, CPU allocation, memory, features
 - Historical cluster, user, and node trends for live, 5 minute, 1 hour, 1 day, and 1 month windows
+- Optional host-level NVIDIA telemetry from `nvidia-smi` when the app is running on a GPU-visible host
 - Raw scheduler command diagnostics to make debugging easy
 
 ## Why this shape
@@ -65,8 +66,11 @@ The scheduler collector currently assumes Slurm and reads:
 
 - `sinfo --Node --Format=%n|%t|%C|%m|%f`
 - `squeue --noheader --Format=%i|%T|%u|%P|%M|%D|%R`
+- `scontrol show nodes -o`
 
 If those commands are unavailable, the dashboard still loads and shows scheduler diagnostics so you can adapt the collector for your environment.
+
+If `nvidia-smi` is available on the host running the app, the dashboard also collects host-local GPU utilization and memory telemetry. This is separate from Slurm allocation history: it measures what GPUs on the current host are doing, not what the scheduler has allocated cluster-wide.
 
 ## Historical data
 

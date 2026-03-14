@@ -136,6 +136,7 @@
                   <th>Node</th>
                   <th>State</th>
                   <th>CPU</th>
+                  <th>GPU</th>
                   <th>Memory</th>
                   <th>Features</th>
                 </tr>
@@ -214,6 +215,20 @@
                 </div>
                 <div id="chart-queue" class="chart"></div>
               </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>GPU Allocation</strong>
+                  <span class="panel-note">allocated vs idle</span>
+                </div>
+                <div id="chart-gpu" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Host GPU Telemetry</strong>
+                  <span class="panel-note">nvidia-smi on this host</span>
+                </div>
+                <div id="chart-gpu-telemetry" class="chart"></div>
+              </div>
             </div>
           </article>
           <article class="panel">
@@ -236,8 +251,37 @@
                 </div>
                 <div id="chart-node" class="chart"></div>
               </div>
+              <div class="chart-card">
+                <div class="chart-head">
+                  <strong>Filtered GPU Allocation</strong>
+                  <span class="panel-note">matching nodes</span>
+                </div>
+                <div id="chart-node-gpu" class="chart"></div>
+              </div>
             </div>
           </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Host NVIDIA-SMI</h2>
+            <span class="panel-note">Current host only</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>GPU</th>
+                  <th>Name</th>
+                  <th>Util</th>
+                  <th>Memory</th>
+                  <th>Temp</th>
+                  <th>Power</th>
+                </tr>
+              </thead>
+              <tbody id="nvidia-gpus-table"></tbody>
+            </table>
+          </div>
         </section>
 
         <section class="panel">

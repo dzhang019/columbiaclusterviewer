@@ -4,6 +4,7 @@ const clusterStatus = document.getElementById("cluster-status");
 const topUsers = document.getElementById("top-users");
 const jobsTable = document.getElementById("jobs-table");
 const nodesTable = document.getElementById("nodes-table");
+const nvidiaGpusTable = document.getElementById("nvidia-gpus-table");
 const diagnostics = document.getElementById("diagnostics");
 const overviewUserFilter = document.getElementById("overview-user-filter");
 const nodesFilter = document.getElementById("nodes-filter");
@@ -132,7 +133,11 @@ function renderRows(target, rows, keys, emptyLabel, rowClassBuilder = null) {
 }
 
 function renderDiagnostics(scheduler) {
-  diagnostics.textContent = JSON.stringify(scheduler.commands, null, 2);
+  const payload = {
+    scheduler: scheduler.commands,
+    nvidia: latestDashboard?.nvidia?.commands || {},
+  };
+  diagnostics.textContent = JSON.stringify(payload, null, 2);
 }
 
 function renderChart(targetId, seriesList, emptyLabel) {
@@ -320,6 +325,22 @@ function renderHistory(history) {
     "Waiting for queue samples.",
   );
   renderChart(
+    "chart-gpu",
+    [
+      { label: "Allocated GPU", color: "#0c6a58", values: cluster.map((point) => point.gpu_allocated || 0), unit: "" },
+      { label: "Idle GPU", color: "#758579", values: cluster.map((point) => point.gpu_idle || 0), unit: "" },
+    ],
+    "Waiting for GPU samples.",
+  );
+  renderChart(
+    "chart-gpu-telemetry",
+    [
+      { label: "Host GPU Util", color: "#0c6a58", values: cluster.map((point) => point.host_gpu_util || 0), unit: "%" },
+      { label: "Host GPU Mem", color: "#d18a2d", values: cluster.map((point) => point.host_gpu_memory_percent || 0), unit: "%" },
+    ],
+    "Waiting for nvidia-smi samples on this host.",
+  );
+  renderChart(
     "chart-user",
     [
       { label: "Running", color: "#0c6a58", values: userSeries.map((point) => point.running_jobs || 0), unit: "" },
@@ -335,6 +356,14 @@ function renderHistory(history) {
       { label: "Idle CPU", color: "#758579", values: nodeSeries.map((point) => point.cpu_idle || 0), unit: "" },
     ],
     "Add a node filter to see matching node history.",
+  );
+  renderChart(
+    "chart-node-gpu",
+    [
+      { label: "Allocated GPU", color: "#0c6a58", values: nodeSeries.map((point) => point.gpu_allocated || 0), unit: "" },
+      { label: "Visible GPU", color: "#758579", values: nodeSeries.map((point) => point.gpu_total || 0), unit: "" },
+    ],
+    "Add a node filter to see matching GPU history.",
   );
 
   if (history.coverage && history.coverage.samples) {
@@ -472,6 +501,23 @@ function renderOverview() {
   renderPills(topUsers, latestDashboard.top_users, "No active jobs.", "user", "jobs");
 }
 
+function renderNvidiaTelemetry() {
+  const gpus = latestDashboard.nvidia?.gpus || [];
+  renderRows(
+    nvidiaGpusTable,
+    gpus.map((gpu) => ({
+      index: gpu.index,
+      name: gpu.name,
+      utilization_gpu: `${gpu.utilization_gpu}%`,
+      memory: `${gpu.memory_used_mb}/${gpu.memory_total_mb} MB (${gpu.memory_percent}%)`,
+      temperature_c: gpu.temperature_c ? `${gpu.temperature_c} C` : "",
+      power_draw_w: gpu.power_draw_w ? `${gpu.power_draw_w} W` : "",
+    })),
+    ["index", "name", "utilization_gpu", "memory", "temperature_c", "power_draw_w"],
+    "No nvidia-smi GPU telemetry is available on this host.",
+  );
+}
+
 function renderNodes() {
   const filterValue = nodesFilter.value.trim().toLowerCase();
   const nodes = sortNodes(
@@ -500,10 +546,11 @@ function renderNodes() {
       name: node.name,
       state: node.state,
       cpu: `${node.cpu_allocated}/${node.cpu_idle}/${node.cpu_total}`,
+      gpu: `${node.gpu_allocated || 0}/${node.gpu_total || 0}`,
       memory_mb: node.memory_mb,
       features: node.features,
     })),
-    ["name", "state", "cpu", "memory_mb", "features"],
+    ["name", "state", "cpu", "gpu", "memory_mb", "features"],
     filterValue || activeNodeScope !== "all" ? "No nodes match the current filters." : "No node data from scheduler.",
     (row) => (isProblemNode(row) ? "row--problem" : ""),
   );
@@ -521,10 +568,12 @@ function renderNodes() {
       }
       if (isGpuNode(node)) {
         summary.gpu += 1;
+        summary.gpuTotal += Number(node.gpu_total || 0);
+        summary.gpuAllocated += Number(node.gpu_allocated || 0);
       }
       return summary;
     },
-    { allocated: 0, idle: 0, problem: 0, gpu: 0 },
+    { allocated: 0, idle: 0, problem: 0, gpu: 0, gpuTotal: 0, gpuAllocated: 0 },
   );
 
   renderPills(
@@ -534,6 +583,7 @@ function renderNodes() {
       { label: "Idle", value: counts.idle },
       { label: "Problem", value: counts.problem },
       { label: "GPU Nodes", value: counts.gpu },
+      { label: "GPU Use", value: `${counts.gpuAllocated}/${counts.gpuTotal}` },
     ],
     "No node summary data.",
     "label",
@@ -545,7 +595,7 @@ function renderNodes() {
     notes.push(`${counts.problem} node(s) are in a problem state.`);
   }
   if (counts.gpu > 0) {
-    notes.push(`${counts.gpu} visible node(s) look GPU-capable based on name/features.`);
+    notes.push(`${counts.gpu} visible node(s) look GPU-capable based on Slurm node data, with ${counts.gpuAllocated}/${counts.gpuTotal} GPUs allocated.`);
   }
   if (!notes.length) {
     notes.push("No obvious node issues are visible in the current sample.");
@@ -571,6 +621,7 @@ async function refreshDashboard() {
     renderOverview();
     renderNodes();
     renderHistory(data.history || {});
+    renderNvidiaTelemetry();
     renderDiagnostics(data.scheduler);
   } catch (error) {
     diagnostics.textContent = `Failed to load dashboard data: ${error}`;
