@@ -28,11 +28,13 @@ def _run_command(command: list[str], timeout: int = 5) -> dict[str, Any]:
         timeout=timeout,
         check=False,
     )
+    stderr = completed.stderr.strip()
+    has_error_output = "error:" in stderr.lower()
     return {
-        "ok": completed.returncode == 0,
+        "ok": completed.returncode == 0 and not has_error_output,
         "command": " ".join(command),
         "stdout": completed.stdout.strip(),
-        "stderr": completed.stderr.strip(),
+        "stderr": stderr,
         "returncode": completed.returncode,
     }
 
@@ -121,8 +123,8 @@ def collect_system_metrics() -> dict[str, Any]:
 
 
 def collect_slurm_metrics() -> dict[str, Any]:
-    sinfo = _run_command(["sinfo", "--Node", "--Format=%n|%t|%C|%m|%f"])
-    squeue = _run_command(["squeue", "--noheader", "--Format=%i|%T|%u|%P|%M|%D|%R"])
+    sinfo = _run_command(["sinfo", "--Node", "-o", "%N|%t|%C|%m|%f"])
+    squeue = _run_command(["squeue", "--noheader", "-o", "%i|%T|%u|%P|%M|%D|%R"])
 
     nodes: list[dict[str, str]] = []
     node_states: dict[str, int] = {}
