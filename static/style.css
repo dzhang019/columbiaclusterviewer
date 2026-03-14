@@ -265,6 +265,16 @@ h1 {
   background: rgba(160, 60, 45, 0.06);
 }
 
+.filter-input--invalid:focus {
+  outline: 2px solid rgba(160, 60, 45, 0.14);
+  border-color: rgba(160, 60, 45, 0.75);
+}
+
+.filter-input--active:focus {
+  outline: 2px solid rgba(12, 106, 88, 0.14);
+  border-color: rgba(12, 106, 88, 0.6);
+}
+
 .pill-grid {
   display: flex;
   flex-wrap: wrap;

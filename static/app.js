@@ -326,12 +326,6 @@ function renderHistory(history) {
     historyCoverage.textContent = "No historical samples yet";
   }
 
-  if (history.filters && (history.filters.user || history.filters.node)) {
-    filterSummary.textContent = `user: ${history.filters.user || "all"} | node: ${history.filters.node || "all"}`;
-  } else {
-    filterSummary.textContent = "Subset matching the active history filters";
-  }
-
   renderDiagnosticsFilterState(history);
 }
 
@@ -350,16 +344,56 @@ function setFilterVisualState(input, stateEl, tone, text) {
   stateEl.textContent = text;
 }
 
+function formatMatchSummary(label, matches) {
+  if (!matches.length) {
+    return `${label}: no matches`;
+  }
+  if (matches.length === 1) {
+    return `${label}: ${matches[0]}`;
+  }
+  const preview = matches.slice(0, 3).join(", ");
+  const suffix = matches.length > 3 ? ` +${matches.length - 3} more` : "";
+  return `${label}: ${matches.length} matches (${preview}${suffix})`;
+}
+
+function getMatchedUsers(filterValue) {
+  const users = new Set();
+  for (const job of latestDashboard.scheduler.jobs || []) {
+    if (!filterValue || job.user.toLowerCase().includes(filterValue.toLowerCase())) {
+      users.add(job.user);
+    }
+  }
+  return [...users].sort((left, right) => left.localeCompare(right));
+}
+
+function getMatchedNodes(filterValue) {
+  const nodes = new Set();
+  for (const node of latestDashboard.scheduler.nodes || []) {
+    const haystack = `${node.name} ${node.features}`.toLowerCase();
+    if (!filterValue || haystack.includes(filterValue.toLowerCase())) {
+      nodes.add(node.name);
+    }
+  }
+  return [...nodes].sort((left, right) => left.localeCompare(right));
+}
+
 function renderDiagnosticsFilterState(history) {
   const userValue = diagnosticsUserFilter.value.trim();
   const nodeValue = diagnosticsNodeFilter.value.trim();
   const userHasMatches = (history.user || []).some((point) => (point.total_jobs || 0) > 0);
   const nodeHasMatches = (history.node || []).some((point) => (point.matched_nodes || 0) > 0 || (point.cpu_total || 0) > 0);
+  const matchedUsers = userValue ? getMatchedUsers(userValue) : [];
+  const matchedNodes = nodeValue ? getMatchedNodes(nodeValue) : [];
 
   if (!userValue) {
     setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "neutral", "All users");
   } else if (userHasMatches) {
-    setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "active", "Active match");
+    setFilterVisualState(
+      diagnosticsUserFilter,
+      diagnosticsUserFilterState,
+      "active",
+      matchedUsers.length ? formatMatchSummary("Users", matchedUsers) : "Active match",
+    );
   } else {
     setFilterVisualState(diagnosticsUserFilter, diagnosticsUserFilterState, "invalid", "No matches");
   }
@@ -367,9 +401,22 @@ function renderDiagnosticsFilterState(history) {
   if (!nodeValue) {
     setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "neutral", "All nodes");
   } else if (nodeHasMatches) {
-    setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "active", "Active match");
+    setFilterVisualState(
+      diagnosticsNodeFilter,
+      diagnosticsNodeFilterState,
+      "active",
+      matchedNodes.length ? formatMatchSummary("Nodes", matchedNodes) : "Active match",
+    );
   } else {
     setFilterVisualState(diagnosticsNodeFilter, diagnosticsNodeFilterState, "invalid", "No matches");
+  }
+
+  if (userValue || nodeValue) {
+    const userSummary = userValue ? (matchedUsers.length ? formatMatchSummary("users", matchedUsers) : "users: no matches") : "users: all";
+    const nodeSummary = nodeValue ? (matchedNodes.length ? formatMatchSummary("nodes", matchedNodes) : "nodes: no matches") : "nodes: all";
+    filterSummary.textContent = `${userSummary} | ${nodeSummary}`;
+  } else {
+    filterSummary.textContent = "Subset matching the active history filters";
   }
 }
 
